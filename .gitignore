@@ -1,7 +1,1 @@
-node_modules
-.DS_Store
-dist
-examples/*/README.md
-.vite-ssg-temp
-*.d.ts
-.idea/
+node_modules/

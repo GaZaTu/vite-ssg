@@ -12,16 +12,9 @@
     "moduleResolution": "Node",
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "types": [
-      "vite/client",
-      "vite-plugin-pages/client"
-    ],
     "paths": {
       "vite-ssg": [
         "./src/index.ts"
-      ],
-      "vite-ssg/single-page": [
-        "./src/client/single-page.ts"
       ]
     }
   },

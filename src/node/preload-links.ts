@@ -1,58 +1,39 @@
-import type { Manifest } from './build'
+export type ViteSSRManifest = Record<string, string[]>
 
-export function renderPreloadLinks(document: Document, modules: Set<string>, ssrManifest: Manifest) {
-  const seen = new Set()
+export function appendPreloadLinks(document: Document, modules: string[], ssrManifest: ViteSSRManifest) {
+  const preloadLinks = modules
+    .flatMap(id => ssrManifest[id])
 
-  const preloadLinks: string[] = []
-
-  // preload modules
-  Array.from(modules).forEach((id) => {
-    const files = ssrManifest[id] || []
-    files.forEach((file) => {
-      if (!preloadLinks.includes(file))
-        preloadLinks.push(file)
-    })
-  })
-
-  if (preloadLinks) {
-    preloadLinks.forEach((file) => {
-      if (!seen.has(file)) {
-        seen.add(file)
-        renderPreloadLink(document, file)
-      }
-    })
+  for (const preloadLink of [...(new Set(preloadLinks))]) {
+    appendPreloadLink(document, preloadLink)
   }
 }
 
-function renderPreloadLink(document: Document, file: string) {
-  if (file.endsWith('.js')) {
+function appendPreloadLink(document: Document, file: string) {
+  if (file.endsWith(".js")) {
     appendLink(document, {
-      rel: 'modulepreload',
-      crossOrigin: '',
+      rel: "modulepreload",
+      crossOrigin: "",
       href: file,
     })
-  }
-  else if (file.endsWith('.css')) {
+  } else if (file.endsWith(".css")) {
     appendLink(document, {
-      rel: 'stylesheet',
+      rel: "stylesheet",
       href: file,
     })
   }
 }
 
-const createLink = (document: Document) => document.createElement('link')
-
-const setAttrs = (el: Element, attrs: Record<string, any>) => {
-  const keys = Object.keys(attrs)
-  for (const key of keys)
-    el.setAttribute(key, attrs[key])
-}
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function appendLink(document: Document, attrs: Record<string, any>) {
-  const exits = document.head.querySelector(`link[href='${attrs.file}']`)
-  if (exits)
+  const exists = document.head.querySelector(`link[href='${attrs.file}']`)
+  if (exists) {
     return
-  const link = createLink(document)
-  setAttrs(link, attrs)
+  }
+
+  const link = document.createElement("link")
+  for (const [key, value] of Object.entries(attrs)) {
+    link.setAttribute(key, value)
+  }
   document.head.appendChild(link)
 }
