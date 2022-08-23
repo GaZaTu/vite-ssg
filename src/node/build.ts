@@ -132,24 +132,21 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
     await fs.remove(ssgOut)
   }
 
+  process.env.VITE_SSG = "true"
+
   // client
   buildLog("Build for client...")
   await viteBuild(mergeConfig(viteConfig, {
     build: {
       ssrManifest: true,
-      // rollupOptions: {
-      //   input: {
-      //     app: join(root, './index.html'),
-      //   },
-      // },
     },
     mode: config.mode,
   }))
 
+  const ssrEntry = await resolveAlias(config, entry)
+
   // server
   buildLog("Build for server...")
-  process.env.VITE_SSG = "true"
-  const ssrEntry = await resolveAlias(config, entry)
   await viteBuild(mergeConfig(viteConfig, {
     build: {
       ssr: ssrEntry,

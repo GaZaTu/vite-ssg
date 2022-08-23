@@ -92,6 +92,7 @@ async function build(cliOptions = {}, viteConfig = {}) {
   if (fs.existsSync(ssgOut)) {
     await fs.remove(ssgOut);
   }
+  process.env.VITE_SSG = "true";
   buildLog("Build for client...");
   await build$1(mergeConfig(viteConfig, {
     build: {
@@ -99,9 +100,8 @@ async function build(cliOptions = {}, viteConfig = {}) {
     },
     mode: config.mode
   }));
-  buildLog("Build for server...");
-  process.env.VITE_SSG = "true";
   const ssrEntry = await resolveAlias(config, entry);
+  buildLog("Build for server...");
   await build$1(mergeConfig(viteConfig, {
     build: {
       ssr: ssrEntry,
