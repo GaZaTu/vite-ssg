@@ -87,12 +87,14 @@ export interface PrerenderResult {
 
 export type PrerenderFunction = (context: { route: string }) => Promise<PrerenderResult>
 
+const INLINE_SCRIPT_HASHES_KEY = "{{INLINE_SCRIPT_HASHES}}"
+
 export interface SetupPrerenderResult {
   root: string
   routes?: string[]
   dirStyle?: "flat" | "nested"
   csp?: {
-    template: `${string}{{INLINE_SCRIPT_HASHES}}${string}`
+    template: `${string}${typeof INLINE_SCRIPT_HASHES_KEY}${string}`
     fileName: string
     fileType: "nginx-conf"
   }
@@ -269,8 +271,15 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
           for (let i = 0; i < inlineScriptTags.length; i++) {
             const inlineScriptTag = inlineScriptTags.item(i) as HTMLScriptElement
 
+            const inlineScriptTagAsString = `<script>${inlineScriptTag.innerHTML}</script>`
+            const inlineScriptTagAsFormattedString = await formatHtml(inlineScriptTagAsString, formatting)
+
+            const inlineScript = inlineScriptTagAsFormattedString
+              .replace("<script>", "")
+              .replace("</script>", "")
+
             const inlineScriptHash = createHash("sha256")
-              .update(inlineScriptTag.innerHTML)
+              .update(inlineScript)
               .digest("base64")
 
             inlineScriptHashes.push(inlineScriptHash)
@@ -307,7 +316,7 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
         .map(hash => `'sha256-${hash}'`)
         .join(" ")
 
-      const headerValue = csp.template.replace("{{INLINE_SCRIPT_HASHES}}", hashesAsString)
+      const headerValue = csp.template.replace(INLINE_SCRIPT_HASHES_KEY, hashesAsString)
       const fileContent = `add_header Content-Security-Policy "${headerValue}";\n`
 
       await fs.ensureDir(join(out, dirname(csp.fileName)))
@@ -406,7 +415,7 @@ async function renderHTML({
   return renderedOutput
 }
 
-async function formatHtml(html: string, formatting: ViteSSGBuildOptions["formatting"]) {
+async function formatHtml(html: string, formatting: ViteSSGBuildOptions["formatting"]): Promise<string> {
   switch (formatting) {
     case "minify": {
       const htmlMinifier = await import("html-minifier")

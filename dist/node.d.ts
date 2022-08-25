@@ -64,12 +64,13 @@ interface PrerenderResult {
 declare type PrerenderFunction = (context: {
     route: string;
 }) => Promise<PrerenderResult>;
+declare const INLINE_SCRIPT_HASHES_KEY = "{{INLINE_SCRIPT_HASHES}}";
 interface SetupPrerenderResult {
     root: string;
     routes?: string[];
     dirStyle?: "flat" | "nested";
     csp?: {
-        template: `${string}{{INLINE_SCRIPT_HASHES}}${string}`;
+        template: `${string}${typeof INLINE_SCRIPT_HASHES_KEY}${string}`;
         fileName: string;
         fileType: "nginx-conf";
     };

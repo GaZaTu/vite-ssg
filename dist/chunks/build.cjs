@@ -71,6 +71,7 @@ function getSize(str) {
   return `${(str.length / 1024).toFixed(2)} KiB`;
 }
 
+const INLINE_SCRIPT_HASHES_KEY = "{{INLINE_SCRIPT_HASHES}}";
 async function importEntryFile(path$1, ssgOut, format = "esm") {
   buildLog(`Loading Entry file "${path$1}"`);
   if (format === "esm") {
@@ -195,7 +196,10 @@ ${element}`;
           const inlineScriptTags = jsdom$1.window.document.querySelectorAll("script:not([src])");
           for (let i = 0; i < inlineScriptTags.length; i++) {
             const inlineScriptTag = inlineScriptTags.item(i);
-            const inlineScriptHash = crypto.createHash("sha256").update(inlineScriptTag.innerHTML).digest("base64");
+            const inlineScriptTagAsString = `<script>${inlineScriptTag.innerHTML}<\/script>`;
+            const inlineScriptTagAsFormattedString = await formatHtml(inlineScriptTagAsString, formatting);
+            const inlineScript = inlineScriptTagAsFormattedString.replace("<script>", "").replace("<\/script>", "");
+            const inlineScriptHash = crypto.createHash("sha256").update(inlineScript).digest("base64");
             inlineScriptHashes.push(inlineScriptHash);
           }
         }
@@ -220,7 +224,7 @@ ${err.stack}`);
     const csp = prerenderConfig.csp;
     if (csp.fileType === "nginx-conf") {
       const hashesAsString = [...new Set(inlineScriptHashes)].map((hash) => `'sha256-${hash}'`).join(" ");
-      const headerValue = csp.template.replace("{{INLINE_SCRIPT_HASHES}}", hashesAsString);
+      const headerValue = csp.template.replace(INLINE_SCRIPT_HASHES_KEY, hashesAsString);
       const fileContent = `add_header Content-Security-Policy "${headerValue}";
 `;
       await fs__default.ensureDir(path.join(out, path.dirname(csp.fileName)));
