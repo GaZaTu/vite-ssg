@@ -1,18 +1,23 @@
 /* eslint-disable no-console */
 import type { Options as CrittersOptions } from "critters"
+import { createHash } from "crypto"
 import fs from "fs-extra"
 import { JSDOM } from "jsdom"
 import { blue, cyan, dim, gray, green, red, yellow } from "kolorist"
 import { createRequire } from "module"
 import PQueue from "p-queue"
-import { dirname, isAbsolute, join, parse, relative } from "path"
+import { dirname, isAbsolute, join as _join, parse, relative } from "path"
 import type { InlineConfig, Plugin, ResolvedConfig } from "vite"
 import { build as viteBuild, mergeConfig, resolveConfig } from "vite"
 import type { VitePluginPWAAPI } from "vite-plugin-pwa"
 import { getCritters } from "./critical-css"
 import { appendPreloadLinks, ViteSSRManifest } from "./preload-links"
 import { buildLog, getSize } from "./utils"
-import { createHash } from "crypto"
+
+const join: typeof _join = (...paths) => {
+  return _join(...paths)
+    .replaceAll("\\", "/")
+}
 
 export interface ViteSSGBuildOptions {
   /**
@@ -94,9 +99,9 @@ export interface SetupPrerenderResult {
   routes?: string[]
   dirStyle?: "flat" | "nested"
   csp?: {
-    template: `${string}${typeof INLINE_SCRIPT_HASHES_KEY}${string}`
     fileName: string
     fileType: "nginx-conf"
+    template: `${string}${typeof INLINE_SCRIPT_HASHES_KEY}${string}`
   }
 }
 

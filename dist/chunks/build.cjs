@@ -1,5 +1,6 @@
 'use strict';
 
+const crypto = require('crypto');
 const fs = require('fs-extra');
 const jsdom = require('jsdom');
 const kolorist = require('kolorist');
@@ -7,7 +8,6 @@ const module$1 = require('module');
 const PQueue = require('p-queue');
 const path = require('path');
 const vite = require('vite');
-const crypto = require('crypto');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e["default"] : e; }
 
@@ -71,15 +71,18 @@ function getSize(str) {
   return `${(str.length / 1024).toFixed(2)} KiB`;
 }
 
+const join = (...paths) => {
+  return path.join(...paths).replaceAll("\\", "/");
+};
 const INLINE_SCRIPT_HASHES_KEY = "{{INLINE_SCRIPT_HASHES}}";
-async function importEntryFile(path$1, ssgOut, format = "esm") {
-  buildLog(`Loading Entry file "${path$1}"`);
+async function importEntryFile(path, ssgOut, format = "esm") {
+  buildLog(`Loading Entry file "${path}"`);
   if (format === "esm") {
-    await fs__default.writeFile(path.join(ssgOut, "package.json"), JSON.stringify({ type: "module" }));
-    return await import(path$1);
+    await fs__default.writeFile(join(ssgOut, "package.json"), JSON.stringify({ type: "module" }));
+    return await import(path);
   } else {
     const _require = module$1.createRequire((typeof document === 'undefined' ? new (require('u' + 'rl').URL)('file:' + __filename).href : (document.currentScript && document.currentScript.src || new URL('chunks/build.cjs', document.baseURI).href)));
-    return _require(path$1);
+    return _require(path);
   }
 }
 const createViteSSGPlugin = (root) => {
@@ -106,9 +109,9 @@ async function build(cliOptions = {}, viteConfig = {}) {
   const config = await vite.resolveConfig(viteConfig, "build", mode);
   const cwd = process.cwd();
   const root = config.root ?? cwd;
-  const ssgOut = path.join(root, ".vite-ssg-temp");
+  const ssgOut = join(root, ".vite-ssg-temp");
   const outDir = config.build.outDir ?? "dist";
-  const out = path.isAbsolute(outDir) ? outDir : path.join(root, outDir);
+  const out = path.isAbsolute(outDir) ? outDir : join(root, outDir);
   const {
     script = "sync",
     entry = await detectSSREntry(root),
@@ -150,7 +153,7 @@ async function build(cliOptions = {}, viteConfig = {}) {
   }));
   const prefix = format === "esm" && process.platform === "win32" ? "file://" : "";
   const ext = format === "esm" ? ".mjs" : ".cjs";
-  const entryFilePath = path.join(prefix, ssgOut, path.parse(ssrEntry).name + ext);
+  const entryFilePath = join(prefix, ssgOut, path.parse(ssrEntry).name + ext);
   const {
     prerender,
     setupPrerender = () => Promise.resolve({})
@@ -161,8 +164,8 @@ async function build(cliOptions = {}, viteConfig = {}) {
   if (critters) {
     console.log(`${kolorist.gray("[vite-ssg]")} ${kolorist.blue("Critical CSS generation enabled via `critters`")}`);
   }
-  const ssrManifest = JSON.parse(await fs__default.readFile(path.join(out, "ssr-manifest.json"), "utf-8"));
-  let indexHTML = await fs__default.readFile(path.join(out, "index.html"), "utf-8");
+  const ssrManifest = JSON.parse(await fs__default.readFile(join(out, "ssr-manifest.json"), "utf-8"));
+  let indexHTML = await fs__default.readFile(join(out, "index.html"), "utf-8");
   indexHTML = rewriteScripts(indexHTML, script);
   const inlineScriptHashes = [];
   const queue = new PQueue__default.default({ concurrency });
@@ -209,9 +212,9 @@ ${element}`;
         }
         html = await formatHtml(html, formatting);
         const relativeRouteFile = `${(route.endsWith("/") ? `${route}index` : route).replace(/^\//g, "")}.html`;
-        const filename = prerenderConfig.dirStyle === "flat" ? relativeRouteFile : path.join(route.replace(/^\//g, ""), "index.html");
-        await fs__default.ensureDir(path.join(out, path.dirname(filename)));
-        await fs__default.writeFile(path.join(out, filename), html, "utf-8");
+        const filename = prerenderConfig.dirStyle === "flat" ? relativeRouteFile : join(route.replace(/^\//g, ""), "index.html");
+        await fs__default.ensureDir(join(out, path.dirname(filename)));
+        await fs__default.writeFile(join(out, filename), html, "utf-8");
         config.logger.info(`${kolorist.dim(`${outDir}/`)}${kolorist.cyan(filename.padEnd(15, " "))}  ${kolorist.dim(getSize(html))}`);
       } catch (err) {
         throw new Error(`${kolorist.gray("[vite-ssg]")} ${kolorist.red(`Error on page: ${kolorist.cyan(route)}`)}
@@ -227,8 +230,8 @@ ${err.stack}`);
       const headerValue = csp.template.replace(INLINE_SCRIPT_HASHES_KEY, hashesAsString);
       const fileContent = `add_header Content-Security-Policy "${headerValue}";
 `;
-      await fs__default.ensureDir(path.join(out, path.dirname(csp.fileName)));
-      await fs__default.writeFile(path.join(out, csp.fileName), fileContent, "utf-8");
+      await fs__default.ensureDir(join(out, path.dirname(csp.fileName)));
+      await fs__default.writeFile(join(out, csp.fileName), fileContent, "utf-8");
     }
   }
   await fs__default.remove(ssgOut);
@@ -248,7 +251,7 @@ ${kolorist.gray("[vite-ssg]")} ${kolorist.green("Build finished.")}`);
 }
 async function detectSSREntry(root) {
   const scriptSrcReg = /<script(?:.*?)src=["'](.+?)["'](?!<)(?:.*)>(?:[\n\r\s]*?)(?:<\/script>)/img;
-  const html = await fs__default.readFile(path.join(root, "index.html"), "utf-8");
+  const html = await fs__default.readFile(join(root, "index.html"), "utf-8");
   const scripts = [...html.matchAll(scriptSrcReg)];
   const [, entry] = scripts.find((matchResult) => {
     const [script] = matchResult;
@@ -260,7 +263,7 @@ async function detectSSREntry(root) {
 async function resolveAlias(config, entry) {
   const resolver = config.createResolver();
   const result = await resolver(entry, config.root);
-  return result ?? path.join(config.root, entry);
+  return result ?? join(config.root, entry);
 }
 function rewriteScripts(indexHTML, mode) {
   if (!mode || mode === "sync") {

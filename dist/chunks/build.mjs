@@ -1,11 +1,11 @@
+import { createHash } from 'crypto';
 import fs from 'fs-extra';
 import { JSDOM } from 'jsdom';
 import { gray, yellow, blue, dim, cyan, red, green } from 'kolorist';
 import { createRequire } from 'module';
 import PQueue from 'p-queue';
-import { join, isAbsolute, parse, dirname, relative } from 'path';
+import { isAbsolute, parse, dirname, join as join$1, relative } from 'path';
 import { resolveConfig, build as build$1, mergeConfig } from 'vite';
-import { createHash } from 'crypto';
 
 async function getCritters(outDir, options = {}) {
   try {
@@ -64,6 +64,9 @@ function getSize(str) {
   return `${(str.length / 1024).toFixed(2)} KiB`;
 }
 
+const join = (...paths) => {
+  return join$1(...paths).replaceAll("\\", "/");
+};
 const INLINE_SCRIPT_HASHES_KEY = "{{INLINE_SCRIPT_HASHES}}";
 async function importEntryFile(path, ssgOut, format = "esm") {
   buildLog(`Loading Entry file "${path}"`);

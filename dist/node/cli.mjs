@@ -2,13 +2,13 @@ import { gray, bold, red, reset } from 'kolorist';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { b as build } from '../chunks/build.mjs';
+import 'crypto';
 import 'fs-extra';
 import 'jsdom';
 import 'module';
 import 'p-queue';
 import 'path';
 import 'vite';
-import 'crypto';
 
 yargs(hideBin(process.argv)).scriptName("vite-ssg").usage("$0 [args]").command(
   "build",

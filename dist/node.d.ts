@@ -70,9 +70,9 @@ interface SetupPrerenderResult {
     routes?: string[];
     dirStyle?: "flat" | "nested";
     csp?: {
-        template: `${string}${typeof INLINE_SCRIPT_HASHES_KEY}${string}`;
         fileName: string;
         fileType: "nginx-conf";
+        template: `${string}${typeof INLINE_SCRIPT_HASHES_KEY}${string}`;
     };
 }
 declare type SetupPrerenderFunction = () => Promise<SetupPrerenderResult>;
