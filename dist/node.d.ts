@@ -68,6 +68,11 @@ interface SetupPrerenderResult {
     root: string;
     routes?: string[];
     dirStyle?: "flat" | "nested";
+    csp?: {
+        template: `${string}{{INLINE_SCRIPT_HASHES}}${string}`;
+        fileName: string;
+        fileType: "nginx-conf";
+    };
 }
 declare type SetupPrerenderFunction = () => Promise<SetupPrerenderResult>;
 declare type EntryFileExports = {

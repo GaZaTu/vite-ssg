@@ -10,6 +10,7 @@ require('module');
 require('p-queue');
 require('path');
 require('vite');
+require('crypto');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e["default"] : e; }
 

@@ -12,6 +12,7 @@ import type { VitePluginPWAAPI } from "vite-plugin-pwa"
 import { getCritters } from "./critical-css"
 import { appendPreloadLinks, ViteSSRManifest } from "./preload-links"
 import { buildLog, getSize } from "./utils"
+import { createHash } from "crypto"
 
 export interface ViteSSGBuildOptions {
   /**
@@ -90,6 +91,11 @@ export interface SetupPrerenderResult {
   root: string
   routes?: string[]
   dirStyle?: "flat" | "nested"
+  csp?: {
+    template: `${string}{{INLINE_SCRIPT_HASHES}}${string}`
+    fileName: string
+    fileType: "nginx-conf"
+  }
 }
 
 export type SetupPrerenderFunction = () => Promise<SetupPrerenderResult>
@@ -118,7 +124,7 @@ const createViteSSGPlugin = (root: string): Plugin => {
     name: "vite-ssg-plugin",
     transform: (src, id) => {
       if (id.endsWith(".jsx") || id.endsWith(".tsx")) {
-        if (id.includes("pages")) {
+        if (id.includes("src/pages")) {
           const __ssrModuleId = relative(root, id)
             .replace(/\\/g, "/")
 
@@ -215,6 +221,8 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
   let indexHTML = await fs.readFile(join(out, "index.html"), "utf-8")
   indexHTML = rewriteScripts(indexHTML, script)
 
+  const inlineScriptHashes: string[] = []
+
   // @ts-expect-error just ignore it hasn't exports on its package
   // eslint-disable-next-line new-cap
   const queue = new PQueue.default({ concurrency })
@@ -256,6 +264,19 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
           }
         }
 
+        if (prerenderConfig.csp) {
+          const inlineScriptTags = jsdom.window.document.querySelectorAll("script:not([src])")
+          for (let i = 0; i < inlineScriptTags.length; i++) {
+            const inlineScriptTag = inlineScriptTags.item(i) as HTMLScriptElement
+
+            const inlineScriptHash = createHash("sha256")
+              .update(inlineScriptTag.innerHTML)
+              .digest("base64")
+
+            inlineScriptHashes.push(inlineScriptHash)
+          }
+        }
+
         let html = jsdom.serialize()
         if (critters) {
           html = await critters.process(html)
@@ -277,6 +298,22 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
   }
 
   await queue.start().onIdle()
+
+  if (prerenderConfig.csp) {
+    const csp = prerenderConfig.csp
+
+    if (csp.fileType === "nginx-conf") {
+      const hashesAsString = [...(new Set(inlineScriptHashes))]
+        .map(hash => `'sha256-${hash}'`)
+        .join(" ")
+
+      const headerValue = csp.template.replace("{{INLINE_SCRIPT_HASHES}}", hashesAsString)
+      const fileContent = `add_header Content-Security-Policy "${headerValue}";\n`
+
+      await fs.ensureDir(join(out, dirname(csp.fileName)))
+      await fs.writeFile(join(out, csp.fileName), fileContent, "utf-8")
+    }
+  }
 
   await fs.remove(ssgOut)
 

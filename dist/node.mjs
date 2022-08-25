@@ -6,3 +6,4 @@ import 'module';
 import 'p-queue';
 import 'path';
 import 'vite';
+import 'crypto';

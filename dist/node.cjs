@@ -10,6 +10,7 @@ require('module');
 require('p-queue');
 require('path');
 require('vite');
+require('crypto');
 
 
 

@@ -8,6 +8,7 @@ import 'module';
 import 'p-queue';
 import 'path';
 import 'vite';
+import 'crypto';
 
 yargs(hideBin(process.argv)).scriptName("vite-ssg").usage("$0 [args]").command(
   "build",

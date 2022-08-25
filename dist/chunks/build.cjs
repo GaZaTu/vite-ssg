@@ -7,6 +7,7 @@ const module$1 = require('module');
 const PQueue = require('p-queue');
 const path = require('path');
 const vite = require('vite');
+const crypto = require('crypto');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e["default"] : e; }
 
@@ -85,7 +86,7 @@ const createViteSSGPlugin = (root) => {
     name: "vite-ssg-plugin",
     transform: (src, id) => {
       if (id.endsWith(".jsx") || id.endsWith(".tsx")) {
-        if (id.includes("pages")) {
+        if (id.includes("src/pages")) {
           const __ssrModuleId = path.relative(root, id).replace(/\\/g, "/");
           return `
             import { __ssrLoadedModules } from "vite-ssg-but-for-everyone";
@@ -162,6 +163,7 @@ async function build(cliOptions = {}, viteConfig = {}) {
   const ssrManifest = JSON.parse(await fs__default.readFile(path.join(out, "ssr-manifest.json"), "utf-8"));
   let indexHTML = await fs__default.readFile(path.join(out, "index.html"), "utf-8");
   indexHTML = rewriteScripts(indexHTML, script);
+  const inlineScriptHashes = [];
   const queue = new PQueue__default.default({ concurrency });
   for (const route of prerenderConfig.routes ?? ["/"]) {
     queue.add(async () => {
@@ -189,6 +191,14 @@ ${element}`;
             head.appendChild(Object.assign(jsdom$1.window.document.createElement(element.type), element.props));
           }
         }
+        if (prerenderConfig.csp) {
+          const inlineScriptTags = jsdom$1.window.document.querySelectorAll("script:not([src])");
+          for (let i = 0; i < inlineScriptTags.length; i++) {
+            const inlineScriptTag = inlineScriptTags.item(i);
+            const inlineScriptHash = crypto.createHash("sha256").update(inlineScriptTag.innerHTML).digest("base64");
+            inlineScriptHashes.push(inlineScriptHash);
+          }
+        }
         let html = jsdom$1.serialize();
         if (critters) {
           html = await critters.process(html);
@@ -206,6 +216,17 @@ ${err.stack}`);
     });
   }
   await queue.start().onIdle();
+  if (prerenderConfig.csp) {
+    const csp = prerenderConfig.csp;
+    if (csp.fileType === "nginx-conf") {
+      const hashesAsString = [...new Set(inlineScriptHashes)].map((hash) => `'sha256-${hash}'`).join(" ");
+      const headerValue = csp.template.replace("{{INLINE_SCRIPT_HASHES}}", hashesAsString);
+      const fileContent = `add_header Content-Security-Policy "${headerValue}";
+`;
+      await fs__default.ensureDir(path.join(out, path.dirname(csp.fileName)));
+      await fs__default.writeFile(path.join(out, csp.fileName), fileContent, "utf-8");
+    }
+  }
   await fs__default.remove(ssgOut);
   const pwaPlugin = config.plugins.find((i) => i.name === "vite-plugin-pwa")?.api;
   if (pwaPlugin && !pwaPlugin.disabled && pwaPlugin.generateSW) {
