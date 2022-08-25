@@ -6,11 +6,12 @@ export async function getCritters(outDir: string, options: Options = {}) {
 
     return new CrittersClass({
       path: outDir,
-      logLevel: "warn",
       external: true,
-      pruneSource: true,
+      pruneSource: false,
+      mergeStylesheets: true,
       inlineFonts: true,
       preloadFonts: true,
+      logLevel: "warn",
       ...options,
     })
   } catch (e) {

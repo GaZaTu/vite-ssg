@@ -19,11 +19,12 @@ async function getCritters(outDir, options = {}) {
     const { default: CrittersClass } = await import('critters');
     return new CrittersClass({
       path: outDir,
-      logLevel: "warn",
       external: true,
-      pruneSource: true,
+      pruneSource: false,
+      mergeStylesheets: true,
       inlineFonts: true,
       preloadFonts: true,
+      logLevel: "warn",
       ...options
     });
   } catch (e) {
@@ -33,23 +34,26 @@ async function getCritters(outDir, options = {}) {
 
 function appendPreloadLinks(document, modules, ssrManifest) {
   const preloadLinks = modules.flatMap((id) => ssrManifest[id]);
-  for (const preloadLink of [...new Set(preloadLinks)]) {
-    appendPreloadLink(document, preloadLink);
-  }
+  return [...new Set(preloadLinks)].map((preloadLink) => appendPreloadLink(document, preloadLink));
 }
 function appendPreloadLink(document, file) {
   if (file.endsWith(".js")) {
-    appendLink(document, {
+    const attrs = {
       rel: "modulepreload",
       crossOrigin: "",
       href: file
-    });
+    };
+    appendLink(document, attrs);
+    return attrs;
   } else if (file.endsWith(".css")) {
-    appendLink(document, {
+    const attrs = {
       rel: "stylesheet",
       href: file
-    });
+    };
+    appendLink(document, attrs);
+    return attrs;
   }
+  return void 0;
 }
 function appendLink(document, attrs) {
   const exists = document.head.querySelector(`link[href='${attrs.file}']`);

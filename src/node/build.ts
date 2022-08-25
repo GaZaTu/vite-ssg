@@ -292,6 +292,7 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
         }
 
         let html = jsdom.serialize()
+
         if (critters) {
           html = await critters.process(html)
         }

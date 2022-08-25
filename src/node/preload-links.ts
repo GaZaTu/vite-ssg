@@ -4,24 +4,31 @@ export function appendPreloadLinks(document: Document, modules: string[], ssrMan
   const preloadLinks = modules
     .flatMap(id => ssrManifest[id])
 
-  for (const preloadLink of [...(new Set(preloadLinks))]) {
-    appendPreloadLink(document, preloadLink)
-  }
+  return [...(new Set(preloadLinks))]
+    .map(preloadLink => appendPreloadLink(document, preloadLink))
 }
 
 function appendPreloadLink(document: Document, file: string) {
   if (file.endsWith(".js")) {
-    appendLink(document, {
+    const attrs = {
       rel: "modulepreload",
       crossOrigin: "",
       href: file,
-    })
+    }
+
+    appendLink(document, attrs)
+    return attrs
   } else if (file.endsWith(".css")) {
-    appendLink(document, {
+    const attrs = {
       rel: "stylesheet",
       href: file,
-    })
+    }
+
+    appendLink(document, attrs)
+    return attrs
   }
+
+  return undefined
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
