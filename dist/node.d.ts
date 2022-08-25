@@ -1,11 +1,6 @@
 import { Options } from 'critters';
 import { InlineConfig } from 'vite';
 
-declare type RouteDefinition = string | {
-    path?: string;
-    children?: RouteDefinition[];
-};
-
 interface ViteSSGBuildOptions {
     /**
      * Rewrite scripts loading mode, only works for `type="module"`
@@ -54,10 +49,9 @@ declare module "vite" {
     }
 }
 interface PrerenderResult {
-    root: string;
     html: string;
     preload?: string[];
-    routes?: RouteDefinition[];
+    routes?: string[];
     head?: {
         lang?: string;
         title?: string;
@@ -66,15 +60,19 @@ interface PrerenderResult {
             props: Record<string, any>;
         })[];
     };
-    dirStyle?: "flat" | "nested";
 }
 declare type PrerenderFunction = (context: {
     route: string;
 }) => Promise<PrerenderResult>;
-declare type GetRoutesToPrerenderFunction = () => Promise<string[]>;
+interface SetupPrerenderResult {
+    root: string;
+    routes?: string[];
+    dirStyle?: "flat" | "nested";
+}
+declare type SetupPrerenderFunction = () => Promise<SetupPrerenderResult>;
 declare type EntryFileExports = {
     prerender: PrerenderFunction;
-    getRoutesToPrerender?: GetRoutesToPrerenderFunction;
+    setupPrerender?: SetupPrerenderFunction;
 };
 declare function build(cliOptions?: Partial<ViteSSGBuildOptions>, viteConfig?: InlineConfig): Promise<void>;
 

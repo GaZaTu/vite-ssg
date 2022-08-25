@@ -1,7 +1,7 @@
 {
   "name": "vite-ssg-but-for-everyone",
-  "version": "0.1.0",
-  "description": "https://github.com/antfu/vite-ssg but for everyone",
+  "version": "0.2.0",
+  "description": "https://github.com/antfu/vite-ssg but for everyone (including your mom)",
   "author": "Anthony Fu <anthonyfu117@hotmail.com> and GaZaTu",
   "license": "MIT",
   "repository": {
@@ -17,6 +17,11 @@
   ],
   "sideEffects": false,
   "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.mjs"
+    },
     "./node": {
       "types": "./dist/node.d.ts",
       "require": "./dist/node.cjs",

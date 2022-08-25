@@ -2,6 +2,6 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-const dummy = {};
+const __ssrLoadedModules = [];
 
-exports.dummy = dummy;
+exports.__ssrLoadedModules = __ssrLoadedModules;

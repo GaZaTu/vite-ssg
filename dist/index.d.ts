@@ -1,3 +1,3 @@
-declare const dummy: {};
+declare const __ssrLoadedModules: string[];
 
-export { dummy };
+export { __ssrLoadedModules };

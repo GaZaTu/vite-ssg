@@ -3,7 +3,7 @@ import { JSDOM } from 'jsdom';
 import { gray, yellow, blue, dim, cyan, red, green } from 'kolorist';
 import { createRequire } from 'module';
 import PQueue from 'p-queue';
-import { join, isAbsolute, parse, dirname } from 'path';
+import { join, isAbsolute, parse, dirname, relative } from 'path';
 import { resolveConfig, build as build$1, mergeConfig } from 'vite';
 
 async function getCritters(outDir, options = {}) {
@@ -73,6 +73,25 @@ async function importEntryFile(path, ssgOut, format = "esm") {
     return _require(path);
   }
 }
+const createViteSSGPlugin = (root) => {
+  return {
+    name: "vite-ssg-plugin",
+    transform: (src, id) => {
+      if (id.endsWith(".tsx")) {
+        if (id.includes("pages")) {
+          const __ssrModuleId = relative(root, id).replace(/\\/g, "/");
+          return `
+              import { __ssrLoadedModules } from "vite-ssg-but-for-everyone";
+              const __ssrModuleId = "${__ssrModuleId}";
+              __ssrLoadedModules.push(__ssrModuleId);
+              ${src}
+            `;
+        }
+      }
+      return void 0;
+    }
+  };
+};
 async function build(cliOptions = {}, viteConfig = {}) {
   const mode = process.env.MODE ?? process.env.NODE_ENV ?? cliOptions.mode ?? "production";
   const config = await resolveConfig(viteConfig, "build", mode);
@@ -103,6 +122,9 @@ async function build(cliOptions = {}, viteConfig = {}) {
   const ssrEntry = await resolveAlias(config, entry);
   buildLog("Build for server...");
   await build$1(mergeConfig(viteConfig, {
+    plugins: [
+      createViteSSGPlugin(root)
+    ],
     build: {
       ssr: ssrEntry,
       outDir: ssgOut,
@@ -122,10 +144,10 @@ async function build(cliOptions = {}, viteConfig = {}) {
   const entryFilePath = join(prefix, ssgOut, parse(ssrEntry).name + ext);
   const {
     prerender,
-    getRoutesToPrerender = () => Promise.resolve(["/"])
+    setupPrerender = () => Promise.resolve({})
   } = await importEntryFile(entryFilePath, ssgOut, format);
-  const routesPaths = await getRoutesToPrerender();
-  buildLog("Rendering Pages...", routesPaths.length);
+  const prerenderConfig = await setupPrerender();
+  buildLog("Rendering Pages...", prerenderConfig.routes?.length ?? 1);
   const critters = crittersOptions !== false ? await getCritters(outDir, crittersOptions) : void 0;
   if (critters) {
     console.log(`${gray("[vite-ssg]")} ${blue("Critical CSS generation enabled via `critters`")}`);
@@ -134,12 +156,13 @@ async function build(cliOptions = {}, viteConfig = {}) {
   let indexHTML = await fs.readFile(join(out, "index.html"), "utf-8");
   indexHTML = rewriteScripts(indexHTML, script);
   const queue = new PQueue.default({ concurrency });
-  for (const route of routesPaths) {
+  for (const route of prerenderConfig.routes ?? ["/"]) {
     queue.add(async () => {
       try {
         const appCtx = await prerender({ route });
         const renderedHTML = await renderHTML({
           indexHTML,
+          root: prerenderConfig.root,
           ...appCtx
         });
         const jsdom = new JSDOM(renderedHTML);
@@ -162,7 +185,7 @@ ${element}`;
         }
         html = await formatHtml(html, formatting);
         const relativeRouteFile = `${(route.endsWith("/") ? `${route}index` : route).replace(/^\//g, "")}.html`;
-        const filename = appCtx.dirStyle === "flat" ? relativeRouteFile : join(route.replace(/^\//g, ""), "index.html");
+        const filename = prerenderConfig.dirStyle === "flat" ? relativeRouteFile : join(route.replace(/^\//g, ""), "index.html");
         await fs.ensureDir(join(out, dirname(filename)));
         await fs.writeFile(join(out, filename), html, "utf-8");
         config.logger.info(`${dim(`${outDir}/`)}${cyan(filename.padEnd(15, " "))}  ${dim(getSize(html))}`);

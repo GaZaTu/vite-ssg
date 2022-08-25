@@ -1,3 +1,3 @@
-const dummy = {};
+const __ssrLoadedModules = [];
 
-export { dummy };
+export { __ssrLoadedModules };

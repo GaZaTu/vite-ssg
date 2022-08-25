@@ -5,13 +5,13 @@ import { JSDOM } from "jsdom"
 import { blue, cyan, dim, gray, green, red, yellow } from "kolorist"
 import { createRequire } from "module"
 import PQueue from "p-queue"
-import { dirname, isAbsolute, join, parse } from "path"
-import type { InlineConfig, ResolvedConfig } from "vite"
+import { dirname, isAbsolute, join, parse, relative } from "path"
+import type { InlineConfig, Plugin, ResolvedConfig } from "vite"
 import { build as viteBuild, mergeConfig, resolveConfig } from "vite"
 import type { VitePluginPWAAPI } from "vite-plugin-pwa"
 import { getCritters } from "./critical-css"
 import { appendPreloadLinks, ViteSSRManifest } from "./preload-links"
-import { buildLog, getSize, RouteDefinition } from "./utils"
+import { buildLog, getSize } from "./utils"
 
 export interface ViteSSGBuildOptions {
   /**
@@ -70,10 +70,9 @@ declare module "vite" {
 }
 
 export interface PrerenderResult {
-  root: string
   html: string
   preload?: string[]
-  routes?: RouteDefinition[]
+  routes?: string[]
   head?: {
     lang?: string
     title?: string
@@ -83,16 +82,21 @@ export interface PrerenderResult {
       props: Record<string, any>
     })[]
   }
-  dirStyle?: "flat" | "nested"
 }
 
 export type PrerenderFunction = (context: { route: string }) => Promise<PrerenderResult>
 
-export type GetRoutesToPrerenderFunction = () => Promise<string[]>
+export interface SetupPrerenderResult {
+  root: string
+  routes?: string[]
+  dirStyle?: "flat" | "nested"
+}
+
+export type SetupPrerenderFunction = () => Promise<SetupPrerenderResult>
 
 export type EntryFileExports = {
   prerender: PrerenderFunction
-  getRoutesToPrerender?: GetRoutesToPrerenderFunction
+  setupPrerender?: SetupPrerenderFunction
 }
 
 export async function importEntryFile(path: string, ssgOut: string, format: "esm" | "cjs" = "esm") {
@@ -106,6 +110,29 @@ export async function importEntryFile(path: string, ssgOut: string, format: "esm
     const _require = createRequire(import.meta.url)
 
     return _require(path) as EntryFileExports
+  }
+}
+
+const createViteSSGPlugin = (root: string): Plugin => {
+  return {
+    name: "vite-ssg-plugin",
+    transform: (src, id) => {
+      if (id.endsWith(".jsx") || id.endsWith(".tsx")) {
+        if (id.includes("pages")) {
+          const __ssrModuleId = relative(root, id)
+            .replace(/\\/g, "/")
+
+          return `
+            import { __ssrLoadedModules } from "vite-ssg-but-for-everyone";
+            const __ssrModuleId = "${__ssrModuleId}";
+            __ssrLoadedModules.push(__ssrModuleId);
+            ${src}
+          `
+        }
+      }
+
+      return undefined
+    },
   }
 }
 
@@ -148,6 +175,9 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
   // server
   buildLog("Build for server...")
   await viteBuild(mergeConfig(viteConfig, {
+    plugins: [
+      createViteSSGPlugin(root),
+    ],
     build: {
       ssr: ssrEntry,
       outDir: ssgOut,
@@ -169,12 +199,12 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
 
   const {
     prerender,
-    getRoutesToPrerender = () => Promise.resolve(["/"]),
+    setupPrerender = () => Promise.resolve({} as SetupPrerenderResult),
   } = await importEntryFile(entryFilePath, ssgOut, format)
 
-  const routesPaths = await getRoutesToPrerender()
+  const prerenderConfig = await setupPrerender()
 
-  buildLog("Rendering Pages...", routesPaths.length)
+  buildLog("Rendering Pages...", prerenderConfig.routes?.length ?? 1)
 
   const critters = crittersOptions !== false ? await getCritters(outDir, crittersOptions) : undefined
   if (critters) {
@@ -189,7 +219,7 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
   // eslint-disable-next-line new-cap
   const queue = new PQueue.default({ concurrency })
 
-  for (const route of routesPaths) {
+  for (const route of prerenderConfig.routes ?? ["/"]) {
     queue.add(async () => {
       try {
         const appCtx = await prerender({ route })
@@ -197,6 +227,7 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
         // need to resolve assets so render content first
         const renderedHTML = await renderHTML({
           indexHTML,
+          root: prerenderConfig.root,
           ...appCtx,
         })
 
@@ -204,6 +235,10 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
         const jsdom = new JSDOM(renderedHTML)
 
         const head = jsdom.window.document.head
+
+        if (appCtx.head?.lang) {
+          head.lang = appCtx.head.lang
+        }
 
         if (appCtx.head?.title) {
           head.title = appCtx.head.title
@@ -229,7 +264,7 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
         html = await formatHtml(html, formatting)
 
         const relativeRouteFile = `${(route.endsWith("/") ? `${route}index` : route).replace(/^\//g, "")}.html`
-        const filename = appCtx.dirStyle === "flat" ? relativeRouteFile : join(route.replace(/^\//g, ""), "index.html")
+        const filename = prerenderConfig.dirStyle === "flat" ? relativeRouteFile : join(route.replace(/^\//g, ""), "index.html")
 
         await fs.ensureDir(join(out, dirname(filename)))
         await fs.writeFile(join(out, filename), html, "utf-8")
@@ -298,6 +333,7 @@ async function renderHTML({
   html: appHTML,
 }: PrerenderResult & {
   indexHTML: string
+  root: string
 }) {
   const container = `<div id="${rootContainerId}"></div>`
   if (indexHTML.includes(container)) {
