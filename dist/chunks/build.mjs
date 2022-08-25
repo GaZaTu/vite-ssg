@@ -77,15 +77,15 @@ const createViteSSGPlugin = (root) => {
   return {
     name: "vite-ssg-plugin",
     transform: (src, id) => {
-      if (id.endsWith(".tsx")) {
+      if (id.endsWith(".jsx") || id.endsWith(".tsx")) {
         if (id.includes("pages")) {
           const __ssrModuleId = relative(root, id).replace(/\\/g, "/");
           return `
-              import { __ssrLoadedModules } from "vite-ssg-but-for-everyone";
-              const __ssrModuleId = "${__ssrModuleId}";
-              __ssrLoadedModules.push(__ssrModuleId);
-              ${src}
-            `;
+            import { __ssrLoadedModules } from "vite-ssg-but-for-everyone";
+            const __ssrModuleId = "${__ssrModuleId}";
+            __ssrLoadedModules.push(__ssrModuleId);
+            ${src}
+          `;
         }
       }
       return void 0;
@@ -167,6 +167,9 @@ async function build(cliOptions = {}, viteConfig = {}) {
         });
         const jsdom = new JSDOM(renderedHTML);
         const head = jsdom.window.document.head;
+        if (appCtx.head?.lang) {
+          head.lang = appCtx.head.lang;
+        }
         if (appCtx.head?.title) {
           head.title = appCtx.head.title;
         }
