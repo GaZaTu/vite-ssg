@@ -137,7 +137,7 @@ async function build(cliOptions = {}, viteConfig = {}) {
     build: {
       ssr: ssrEntry,
       outDir: ssgOut,
-      minify: true,
+      minify: false,
       cssCodeSplit: true,
       rollupOptions: {
         output: {

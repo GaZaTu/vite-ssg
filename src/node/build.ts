@@ -194,7 +194,7 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
     build: {
       ssr: ssrEntry,
       outDir: ssgOut,
-      minify: true, // false
+      minify: false, // false
       cssCodeSplit: true, // false
       rollupOptions: {
         output: {
