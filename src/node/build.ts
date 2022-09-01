@@ -132,7 +132,6 @@ const createViteSSGPlugin = (root: string): Plugin => {
     name: "vite-ssg-plugin",
     transform: (src, id) => {
       if (!id.endsWith(".jsx") && !id.endsWith(".tsx")) {
-
         return undefined
       }
 
