@@ -26,6 +26,19 @@ Features I added in this fork:
 }
 ```
 
+```diff
+// vite.config.ts
+import { defineConfig } from "vite"
+import solid from "vite-plugin-solid"
+
+export default defineConfig({
+  plugins: [
+-   solid(),
++   solid({ ssr: true }),
+  ],
+})
+```
+
 ```typescript
 // src/index.tsx
 import { __ssrLoadedModules } from "vite-ssg-but-for-everyone"
