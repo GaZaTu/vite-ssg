@@ -154,15 +154,16 @@ async function build(cliOptions = {}, viteConfig = {}) {
   const ext = format === "esm" ? ".mjs" : ".cjs";
   const entryFilePath = join(prefix, ssgOut, parse(ssrEntry).name + ext);
   const prerenderFilePath = new URL(`${dirname(entryFilePath)}/__prerender.mjs`);
-  console.log("prerenderFilePath", prerenderFilePath);
   await fs.writeFile(prerenderFilePath, `
     import { prerender } from "./${basename(entryFilePath)}"
 
     process.on("message", async context => {
-      process.send(await prerender(context))
+      process.send(await prerender(context), () => {
+        process.exit()
+      })
     })
   `);
-  const prerender = async (context) => {
+  const prerender = (context) => {
     const child = fork(prerenderFilePath);
     return new Promise((resolve, reject) => {
       child.on("error", reject);

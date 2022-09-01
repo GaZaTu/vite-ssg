@@ -218,11 +218,13 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
     import { prerender } from "./${basename(entryFilePath)}"
 
     process.on("message", async context => {
-      process.send(await prerender(context))
+      process.send(await prerender(context), () => {
+        process.exit()
+      })
     })
   `)
 
-  const prerender: PrerenderFunction = async context => {
+  const prerender: PrerenderFunction = context => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const child = fork(prerenderFilePath as any)
 
