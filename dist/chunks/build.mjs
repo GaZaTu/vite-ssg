@@ -1,10 +1,11 @@
+import { fork } from 'child_process';
 import { createHash } from 'crypto';
 import fs from 'fs-extra';
 import { JSDOM } from 'jsdom';
 import { gray, yellow, blue, dim, cyan, red, green } from 'kolorist';
 import { createRequire } from 'module';
 import PQueue from 'p-queue';
-import { isAbsolute, parse, dirname, join as join$1, relative } from 'path';
+import { isAbsolute, parse, dirname, basename, join as join$1, relative } from 'path';
 import { resolveConfig, build as build$1, mergeConfig } from 'vite';
 
 async function getCritters(outDir, options = {}) {
@@ -86,18 +87,19 @@ const createViteSSGPlugin = (root) => {
   return {
     name: "vite-ssg-plugin",
     transform: (src, id) => {
-      if (id.endsWith(".jsx") || id.endsWith(".tsx")) {
-        if (id.includes("src/pages")) {
-          const __ssrModuleId = relative(root, id).replace(/\\/g, "/");
-          return `
-            import { __ssrLoadedModules } from "vite-ssg-but-for-everyone";
-            const __ssrModuleId = "${__ssrModuleId}";
-            __ssrLoadedModules.push(__ssrModuleId);
-            ${src}
-          `;
-        }
+      if (!id.endsWith(".jsx") && !id.endsWith(".tsx")) {
+        return void 0;
       }
-      return void 0;
+      if (id.includes("index") || id.includes("main")) {
+        return void 0;
+      }
+      const __ssrModuleId = relative(root, id).replace(/\\/g, "/");
+      return `
+        import { __ssrLoadedModules } from "vite-ssg-but-for-everyone";
+        const __ssrModuleId = "${__ssrModuleId}";
+        __ssrLoadedModules.push(__ssrModuleId);
+        ${src}
+      `;
     }
   };
 };
@@ -151,8 +153,24 @@ async function build(cliOptions = {}, viteConfig = {}) {
   const prefix = format === "esm" && process.platform === "win32" ? "file://" : "";
   const ext = format === "esm" ? ".mjs" : ".cjs";
   const entryFilePath = join(prefix, ssgOut, parse(ssrEntry).name + ext);
+  const prerenderFilePath = new URL(`${dirname(entryFilePath)}/__prerender.mjs`);
+  console.log("prerenderFilePath", prerenderFilePath);
+  await fs.writeFile(prerenderFilePath, `
+    import { prerender } from "./${basename(entryFilePath)}"
+
+    process.on("message", async context => {
+      process.send(await prerender(context))
+    })
+  `);
+  const prerender = async (context) => {
+    const child = fork(prerenderFilePath);
+    return new Promise((resolve, reject) => {
+      child.on("error", reject);
+      child.on("message", resolve);
+      child.send(context);
+    });
+  };
   const {
-    prerender,
     setupPrerender = () => Promise.resolve({})
   } = await importEntryFile(entryFilePath, ssgOut, format);
   const prerenderConfig = await setupPrerender();

@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import { fork } from "child_process"
 import type { Options as CrittersOptions } from "critters"
 import { createHash } from "crypto"
 import fs from "fs-extra"
@@ -6,7 +7,7 @@ import { JSDOM } from "jsdom"
 import { blue, cyan, dim, gray, green, red, yellow } from "kolorist"
 import { createRequire } from "module"
 import PQueue from "p-queue"
-import { dirname, isAbsolute, join as _join, parse, relative } from "path"
+import { basename, dirname, isAbsolute, join as _join, parse, relative } from "path"
 import type { InlineConfig, Plugin, ResolvedConfig } from "vite"
 import { build as viteBuild, mergeConfig, resolveConfig } from "vite"
 import type { VitePluginPWAAPI } from "vite-plugin-pwa"
@@ -130,21 +131,24 @@ const createViteSSGPlugin = (root: string): Plugin => {
   return {
     name: "vite-ssg-plugin",
     transform: (src, id) => {
-      if (id.endsWith(".jsx") || id.endsWith(".tsx")) {
-        if (id.includes("src/pages")) {
-          const __ssrModuleId = relative(root, id)
-            .replace(/\\/g, "/")
+      if (!id.endsWith(".jsx") && !id.endsWith(".tsx")) {
 
-          return `
-            import { __ssrLoadedModules } from "vite-ssg-but-for-everyone";
-            const __ssrModuleId = "${__ssrModuleId}";
-            __ssrLoadedModules.push(__ssrModuleId);
-            ${src}
-          `
-        }
+        return undefined
       }
 
-      return undefined
+      if (id.includes("index") || id.includes("main")) {
+        return undefined
+      }
+
+      const __ssrModuleId = relative(root, id)
+        .replace(/\\/g, "/")
+
+      return `
+        import { __ssrLoadedModules } from "vite-ssg-but-for-everyone";
+        const __ssrModuleId = "${__ssrModuleId}";
+        __ssrLoadedModules.push(__ssrModuleId);
+        ${src}
+      `
     },
   }
 }
@@ -210,8 +214,29 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
   const ext = format === "esm" ? ".mjs" : ".cjs"
   const entryFilePath = join(prefix, ssgOut, parse(ssrEntry).name + ext)
 
+  const prerenderFilePath = new URL(`${dirname(entryFilePath)}/__prerender.mjs`)
+  await fs.writeFile(prerenderFilePath, `
+    import { prerender } from "./${basename(entryFilePath)}"
+
+    process.on("message", async context => {
+      process.send(await prerender(context))
+    })
+  `)
+
+  const prerender: PrerenderFunction = async context => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const child = fork(prerenderFilePath as any)
+
+    return new Promise<PrerenderResult>((resolve, reject) => {
+      child.on("error", reject)
+      child.on("message", resolve)
+
+      child.send(context)
+    })
+  }
+
   const {
-    prerender,
+    // prerender,
     setupPrerender = () => Promise.resolve({} as SetupPrerenderResult),
   } = await importEntryFile(entryFilePath, ssgOut, format)
 

@@ -4,6 +4,7 @@ const kolorist = require('kolorist');
 const yargs = require('yargs');
 const helpers = require('yargs/helpers');
 const build = require('../chunks/build.cjs');
+require('child_process');
 require('crypto');
 require('fs-extra');
 require('jsdom');

@@ -1,4 +1,5 @@
 export { b as build } from './chunks/build.mjs';
+import 'child_process';
 import 'crypto';
 import 'fs-extra';
 import 'jsdom';

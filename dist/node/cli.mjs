@@ -2,6 +2,7 @@ import { gray, bold, red, reset } from 'kolorist';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 import { b as build } from '../chunks/build.mjs';
+import 'child_process';
 import 'crypto';
 import 'fs-extra';
 import 'jsdom';
