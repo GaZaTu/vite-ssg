@@ -185,10 +185,12 @@ async function build(cliOptions = {}, viteConfig = {}) {
   indexHTML = rewriteScripts(indexHTML, script);
   const inlineScriptHashes = [];
   const queue = new PQueue.default({ concurrency });
-  for (const route of prerenderConfig.routes ?? ["/"]) {
+  const routes = prerenderConfig.routes ?? ["/"];
+  for (const route of routes) {
     queue.add(async () => {
       try {
         const appCtx = await prerender({ route });
+        routes.push(...appCtx.routes ?? []);
         const renderedHTML = await renderHTML({
           indexHTML,
           root: prerenderConfig.root,
@@ -248,6 +250,34 @@ ${err.stack}`);
 `;
       await fs.ensureDir(join(out, dirname(csp.fileName)));
       await fs.writeFile(join(out, csp.fileName), fileContent, "utf-8");
+    }
+  }
+  if (prerenderConfig.dyn) {
+    const dyn = prerenderConfig.dyn;
+    const dynRoutes = dyn.routes.map(({ matches, template }) => {
+      const regexp = new RegExp(matches);
+      return (route) => {
+        const match = regexp.exec(route);
+        if (!match) {
+          return null;
+        }
+        let result = template;
+        for (let group = 0; group < match.length; group++) {
+          result = result.replace(`{{$${group}}}`, match[group]);
+        }
+        return result;
+      };
+    });
+    if (dyn.fileType === "nginx-conf") {
+      const fileContent = `
+        ${routes.map((route) => {
+        return `
+            ${dynRoutes.map((exec) => exec(route) ?? "").join("\n")}
+          `;
+      }).join("\n")}
+      `;
+      await fs.ensureDir(join(out, dirname(dyn.fileName)));
+      await fs.writeFile(join(out, dyn.fileName), fileContent, "utf-8");
     }
   }
   await fs.remove(ssgOut);

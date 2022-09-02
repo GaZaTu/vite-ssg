@@ -13,6 +13,7 @@ Features I added in this fork:
   - Framework agnostic (if you're using [Vite](https://vitejs.dev/) chances are you can use this project for SSG)
     - includes preloading
   - Automatic CSP generation for nginx (inserts sha-256 hashes for inline script tags) (damn it feels good to get A+ on Mozilla Observatory)
+  - Automatic generation for dynamic routes
 
 ## Setup 🚀
 

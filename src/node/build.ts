@@ -104,6 +104,14 @@ export interface SetupPrerenderResult {
     fileType: "nginx-conf"
     template: `${string}${typeof INLINE_SCRIPT_HASHES_KEY}${string}`
   }
+  dyn?: {
+    fileName: string
+    fileType: "nginx-conf"
+    routes: {
+      matches: string
+      template: `${string}{{$${number}}}${string}`
+    }[]
+  }
 }
 
 export type SetupPrerenderFunction = () => Promise<SetupPrerenderResult>
@@ -260,10 +268,12 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
   // eslint-disable-next-line new-cap
   const queue = new PQueue.default({ concurrency })
 
-  for (const route of prerenderConfig.routes ?? ["/"]) {
+  const routes = prerenderConfig.routes ?? ["/"]
+  for (const route of routes) {
     queue.add(async () => {
       try {
         const appCtx = await prerender({ route })
+        routes.push(...(appCtx.routes ?? []))
 
         // need to resolve assets so render content first
         const renderedHTML = await renderHTML({
@@ -353,6 +363,42 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
 
       await fs.ensureDir(join(out, dirname(csp.fileName)))
       await fs.writeFile(join(out, csp.fileName), fileContent, "utf-8")
+    }
+  }
+
+  if (prerenderConfig.dyn) {
+    const dyn = prerenderConfig.dyn
+
+    const dynRoutes = dyn.routes
+      .map(({ matches, template }) => {
+        const regexp = new RegExp(matches)
+
+        return (route: string) => {
+          const match = regexp.exec(route)
+          if (!match) {
+            return null
+          }
+
+          let result = template as string
+          for (let group = 0; group < match.length; group++) {
+            result = result.replace(`{{$${group}}}`, match[group])
+          }
+
+          return result
+        }
+      })
+
+    if (dyn.fileType === "nginx-conf") {
+      const fileContent = `
+        ${routes.map(route => {
+          return `
+            ${dynRoutes.map(exec => exec(route) ?? "").join("\n")}
+          `
+        }).join("\n")}
+      `
+
+      await fs.ensureDir(join(out, dirname(dyn.fileName)))
+      await fs.writeFile(join(out, dyn.fileName), fileContent, "utf-8")
     }
   }
 

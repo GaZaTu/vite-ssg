@@ -74,6 +74,14 @@ interface SetupPrerenderResult {
         fileType: "nginx-conf";
         template: `${string}${typeof INLINE_SCRIPT_HASHES_KEY}${string}`;
     };
+    dyn?: {
+        fileName: string;
+        fileType: "nginx-conf";
+        routes: {
+            matches: string;
+            template: `${string}{{$${number}}}${string}`;
+        }[];
+    };
 }
 declare type SetupPrerenderFunction = () => Promise<SetupPrerenderResult>;
 declare type EntryFileExports = {
