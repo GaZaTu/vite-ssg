@@ -49,7 +49,7 @@ import App from "./App"
 const ROOT_ELEMENT_ID = "root"
 
 if (typeof window !== "undefined") {
-  const main = () => (<App />)
+  const main = () => <App />
   const root = document.getElementById(ROOT_ELEMENT_ID)!
 
   if (import.meta.env.VITE_SSG) {
@@ -63,7 +63,7 @@ if (typeof window !== "undefined") {
 
 export const prerender: EntryFileExports["prerender"] = async context => {
   const head = [] as ComponentProps<typeof App>["head"]
-  const main = () => (<App url={context.route} head={head} />)
+  const main = () => <App url={context.route} head={head} />
 
   const { renderToStringAsync, generateHydrationScript } = await import("solid-js/web")
   const { renderTags } = await import("@solidjs/meta")
