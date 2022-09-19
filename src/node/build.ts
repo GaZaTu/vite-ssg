@@ -217,7 +217,7 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
     mode: config.mode,
   }))
 
-  const prefix = format === "esm" && process.platform === "win32" ? "file://" : ""
+  const prefix = format === "esm" ? "file://" : ""
   const ext = format === "esm" ? ".mjs" : ".cjs"
   const entryFilePath = join(prefix, ssgOut, parse(ssrEntry).name + ext)
 

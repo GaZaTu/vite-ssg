@@ -157,7 +157,7 @@ async function build(cliOptions = {}, viteConfig = {}) {
     },
     mode: config.mode
   }));
-  const prefix = format === "esm" && process.platform === "win32" ? "file://" : "";
+  const prefix = format === "esm" ? "file://" : "";
   const ext = format === "esm" ? ".mjs" : ".cjs";
   const entryFilePath = join(prefix, ssgOut, path.parse(ssrEntry).name + ext);
   const prerenderFilePath = new URL(`${path.dirname(entryFilePath)}/__prerender.mjs`);
