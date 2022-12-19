@@ -56,7 +56,7 @@
     "release": "bumpp"
   },
   "peerDependencies": {
-    "vite": "^2.0.0 || ^3.0.0-0"
+    "vite": "^2.0.0 || ^3.0.0-0 || ^4.0.0-0"
   },
   "dependencies": {
     "critters": "^0.0.16",
