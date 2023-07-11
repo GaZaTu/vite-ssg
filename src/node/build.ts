@@ -14,6 +14,7 @@ import type { VitePluginPWAAPI } from "vite-plugin-pwa"
 import { getCritters } from "./critical-css"
 import { appendPreloadLinks, ViteSSRManifest } from "./preload-links"
 import { buildLog, getSize } from "./utils"
+import packageJson from "../../package.json" assert { type: "json" }
 
 const join: typeof _join = (...paths) => {
   return _join(...paths)
@@ -151,7 +152,7 @@ const createViteSSGPlugin = (root: string): Plugin => {
         .replace(/\\/g, "/")
 
       return `
-        import { __ssrLoadedModules } from "vite-ssg-but-for-everyone";
+        import { __ssrLoadedModules } from "${packageJson.name}";
         const __ssrModuleId = "${__ssrModuleId}";
         __ssrLoadedModules.push(__ssrModuleId);
         ${src}

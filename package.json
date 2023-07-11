@@ -73,6 +73,7 @@
     "@types/fs-extra": "^9.0.13",
     "@types/html-minifier": "^4.0.2",
     "@types/jsdom": "^20.0.0",
+    "@types/node": "^16.18.38",
     "@types/prettier": "^2.7.0",
     "@types/yargs": "^17.0.11",
     "@typescript-eslint/eslint-plugin": "^5.33.1",
