@@ -391,9 +391,7 @@ export async function build(cliOptions: Partial<ViteSSGBuildOptions> = {}, viteC
     if (dyn.fileType === "nginx-conf") {
       const fileContent = `
         ${routes.map(route => {
-          return `
-            ${dynRoutes.map(exec => exec(route) ?? "").join("\n")}
-          `
+          return dynRoutes.map(exec => exec(route) ?? "").join("\n")
         }).join("\n")}
       `
 
