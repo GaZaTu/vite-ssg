@@ -1,12 +1,13 @@
 /* eslint-disable */
 
 export function resolve(specifier: string, context: any, nextResolve: (s: string) => any) {
-  const { parentURL = null } = context
+  const { parentURL } = context
+  const url = new URL(specifier, parentURL).href
 
   if (specifier.endsWith(".css")) {
     return {
       shortCircuit: true,
-      url: parentURL ? new URL(specifier, parentURL).href : new URL(specifier).href,
+      url,
     }
   }
 

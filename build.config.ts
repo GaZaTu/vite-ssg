@@ -5,7 +5,7 @@ export default defineBuildConfig({
     { input: "src/index", name: "index" },
     { input: "src/node/cli", name: "node/cli" },
     { input: "src/node", name: "node" },
-    { input: "src/node/loader", name: "loader" },
+    { input: "src/node/esm-loader", name: "esm-loader" },
   ],
   clean: true,
   declaration: true,

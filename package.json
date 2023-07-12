@@ -1,6 +1,6 @@
 {
   "name": "@gazatu/vite-ssg",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "https://github.com/antfu/vite-ssg but for everyone (including your mom)",
   "author": "Anthony Fu <anthonyfu117@hotmail.com> and GaZaTu",
   "license": "MIT",
